@@ -35,4 +35,5 @@ def main() -> None:
 
     from headroom.app import HeadroomApp
 
+    print("\033]0;Headroom\007", end="", flush=True)  # terminal window title
     HeadroomApp().run()

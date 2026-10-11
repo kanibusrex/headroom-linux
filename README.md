@@ -49,7 +49,19 @@ cd headroom-linux
 headroom
 ```
 
-`headroom --summary` prints what can be cleaned without opening the app.
+`install.sh` also adds **Headroom** to your app launcher (`Super + Space` on Omarchy), with an icon. On Omarchy it opens in its own terminal window, and launching it again focuses the open one. `headroom --summary` prints what can be cleaned without opening the app.
+
+### Floating window on Omarchy
+
+The launcher opens Headroom with the window class `TUI.headroom`. To make it float, add this to `~/.config/hypr/hyprland.lua`:
+
+```lua
+o.window("TUI.headroom", {
+  float = true,
+  center = true,
+  size = { 1200, 720 },
+})
+```
 
 ## Keys
 
