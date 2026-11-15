@@ -18,7 +18,9 @@ Scan first, see how much each category holds, pick what to clean, and confirm be
 | App caches | Everything else in `~/.cache` |
 | Thumbnails | File-manager image previews |
 | Developer caches | npm, Cargo, Gradle and Bun download caches |
+| Old tool versions | Versions [mise](https://mise.jdx.dev) installed that no config uses anymore (`mise prune`) — Omarchy adds a new version of claude, codex & co. on every update and never removes the old one |
 | System logs | systemd journal older than 2 weeks |
+| Crash dumps | Repeat core dumps in `/var/lib/systemd/coredump` — keeps the newest dump of each program so crashes can still be diagnosed |
 | Orphaned packages | Dependencies nothing needs anymore (`pacman -Qdt`) |
 | Docker | Stopped containers, unused images and build cache — never volumes |
 | Trash | Empties `~/.local/share/Trash` |
@@ -33,7 +35,7 @@ Lists your explicitly installed packages by size (repo or AUR), with a filter. U
 
 - **Scan before clean** — nothing is removed without an explicit confirmation.
 - Cleanup only deletes the *contents* of well-known regenerable locations, never your documents or app data.
-- Anything system-level (pacman, journal, Docker) runs in your terminal, where you see the exact command and pacman asks before removing packages.
+- Anything system-level (pacman, journal, crash dumps, Docker) runs in your terminal, where you see the exact command and pacman asks before removing packages.
 - Large Files and package leftovers go to the **Trash**, not permanent deletion. `.git` folders are never offered.
 - Core packages (`base`, `linux`, `systemd`, `pacman`, `hyprland`, `omarchy*`, …) can't be uninstalled from Headroom.
 - Files that are locked or in use are skipped, never forced.

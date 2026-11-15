@@ -1,7 +1,7 @@
 """Cleanup categories: well-known locations that are safe to clear and regenerate on demand.
 
 Each category scans to estimate how much space it can reclaim. Categories that touch the
-system (pacman, journald, Docker) clean by running commands in the terminal, so sudo can
+system (pacman, journald, crash dumps, Docker) clean by running commands in the terminal, so sudo can
 prompt for a password and pacman can ask for confirmation. User-level caches are cleared
 directly by Headroom.
 """
@@ -16,6 +16,7 @@ from pathlib import Path
 from headroom.util import CACHE_DIR, HOME, TRASH_DIR, clear_contents, disk_usage, parse_size, run, tilde
 
 PACMAN_CACHE = Path("/var/cache/pacman/pkg")
+COREDUMP_DIR = Path("/var/lib/systemd/coredump")
 
 
 @dataclass
@@ -120,6 +121,105 @@ class JournalLogs(Category):
         return [["sudo", "journalctl", f"--vacuum-time={self.KEEP}"]]
 
 
+class CrashDumps(Category):
+    """systemd-coredump files. Keeps the newest dump of each program so a crash can still be
+    diagnosed, and deletes the repeats — one crashing program can leave dozens of them."""
+
+    directory = COREDUMP_DIR
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.doomed: list[Path] = []
+
+    @staticmethod
+    def parse_name(name: str) -> tuple[str, int] | None:
+        """core.<program>.<uid>.<boot id>.<pid>.<µs timestamp>[.zst] -> (program, timestamp)."""
+        if not name.startswith("core."):
+            return None
+        stem = name[len("core."):]
+        for ext in (".zst", ".lz4", ".xz"):
+            if stem.endswith(ext):
+                stem = stem[: -len(ext)]
+                break
+        parts = stem.rsplit(".", 4)
+        if len(parts) != 5 or not parts[4].isdigit():
+            return None
+        return parts[0], int(parts[4])
+
+    def scan(self) -> ScanResult:
+        self.doomed = []
+        try:
+            entries = list(self.directory.iterdir())
+        except FileNotFoundError:
+            return ScanResult(0, "no crash dumps")
+        except OSError:
+            return ScanResult(None, f"can't read {self.directory}", available=False)
+        by_program: dict[str, list[tuple[int, Path]]] = {}
+        for path in entries:
+            parsed = self.parse_name(path.name)
+            if parsed and path.is_file():
+                by_program.setdefault(parsed[0], []).append((parsed[1], path))
+        size = 0
+        for dumps in by_program.values():
+            dumps.sort(reverse=True)
+            for _, path in dumps[1:]:
+                self.doomed.append(path)
+                size += disk_usage(path)
+        total = sum(len(d) for d in by_program.values())
+        if not total:
+            return ScanResult(0, "no crash dumps")
+        return ScanResult(
+            size,
+            f"{len(self.doomed)} of {total} — keeps the newest of each program ({len(by_program)})",
+        )
+
+    def commands(self) -> list[list[str]]:
+        return [["sudo", "rm", "-f", "--", *map(str, self.doomed)]] if self.doomed else []
+
+
+class MiseVersions(Category):
+    """Tool versions mise installed but no config uses any more. Omarchy installs a new
+    version of its AI tools (claude, codex, …) on every update and never removes the old one."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.paths: list[Path] = []
+
+    def scan(self) -> ScanResult:
+        self.paths = []
+        result = run(["mise", "ls", "--prunable", "--json"], timeout=60)
+        if result is None:
+            return ScanResult(None, "mise not installed", available=False)
+        if result.returncode != 0:
+            return ScanResult(None, "couldn't ask mise for unused versions", available=False)
+        try:
+            tools = json.loads(result.stdout or "{}")
+        except json.JSONDecodeError:
+            return ScanResult(None, "couldn't read mise's output", available=False)
+        names = []
+        for tool, versions in tools.items():
+            for v in versions:
+                path = v.get("install_path")
+                if v.get("installed", True) and not v.get("active") and path:
+                    self.paths.append(Path(path))
+                    names.append(tool)
+        if not self.paths:
+            return ScanResult(0, "no unused versions")
+        size = sum(disk_usage(p) for p in self.paths)
+        counts = {t: names.count(t) for t in dict.fromkeys(names)}
+        listed = ", ".join(f"{t} ×{n}" for t, n in list(counts.items())[:4])
+        more = " …" if len(counts) > 4 else ""
+        return ScanResult(size, f"{len(self.paths)} old versions: {listed}{more}")
+
+    def clean(self) -> int:
+        if not self.paths:
+            return 0
+        before = sum(disk_usage(p) for p in self.paths)
+        # mise decides what's unused, and keeps any version a running program was started from.
+        run(["mise", "prune", "--tools", "--yes"], timeout=600)
+        return max(0, before - sum(disk_usage(p) for p in self.paths))
+
+
 class OrphanPackages(Category):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -202,7 +302,14 @@ def default_categories() -> list[Category]:
                 HOME / ".bun" / "install" / "cache",
             ),
         ),
+        MiseVersions(
+            "mise", "Old tool versions", "Versions mise installed that nothing uses anymore",
+        ),
         JournalLogs("journal", "System logs", "systemd journal", default_selected=False),
+        CrashDumps(
+            "coredumps", "Crash dumps", "Core dumps saved by systemd when a program crashes",
+            default_selected=False,
+        ),
         OrphanPackages(
             "orphans", "Orphaned packages", "Dependencies nothing needs anymore",
             default_selected=False,

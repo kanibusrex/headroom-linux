@@ -99,3 +99,64 @@ def test_find_large_files_skips_small_and_symlinks(tmp_path):
     (tmp_path / "repo/.git/pack").write_bytes(os.urandom(2 * 1024 * 1024))
     files = find_large_files(tmp_path, min_size=1024 * 1024)
     assert [f.path for f in files] == [big]
+
+
+def test_crash_dump_name_parsing():
+    from headroom.cleanup import CrashDumps
+    parse = CrashDumps.parse_name
+    boot = "468964b206344c26bf82dc6e61c80dad"
+    assert parse(f"core.gdb.1000.{boot}.371612.1794355445000000.zst") == ("gdb", 1794355445000000)
+    assert parse(f"core.SimpleHome\\x20Brow.1000.{boot}.42.17.lz4") == ("SimpleHome\\x20Brow", 17)
+    assert parse(f"core.my.prog.1000.{boot}.42.17") == ("my.prog", 17)
+    assert parse("README") is None
+    assert parse(f"core.gdb.1000.{boot}.42.notatime.zst") is None
+
+
+def test_crash_dumps_keep_newest_per_program(tmp_path):
+    from headroom.cleanup import CrashDumps
+    boot = "b" * 32
+    names = [f"core.web.1000.{boot}.1.100.zst", f"core.web.1000.{boot}.2.300.zst",
+             f"core.web.1000.{boot}.3.200.zst", f"core.gdb.1000.{boot}.4.50.zst", "unrelated"]
+    for n in names:
+        (tmp_path / n).write_bytes(b"x" * 5000)
+    cat = CrashDumps("coredumps", "Crash dumps", "")
+    cat.directory = tmp_path
+    result = cat.scan()
+    assert result.size > 0
+    assert sorted(p.name for p in cat.doomed) == sorted(names[i] for i in (0, 2))
+    assert cat.commands()[0][:4] == ["sudo", "rm", "-f", "--"]
+    assert "2 of 4" in result.detail
+
+    empty = CrashDumps("coredumps", "Crash dumps", "")
+    empty.directory = tmp_path / "missing"
+    assert empty.scan().size == 0 and empty.commands() == []
+
+
+def test_mise_versions_scan(tmp_path, monkeypatch):
+    import json
+    import subprocess
+    from headroom import cleanup
+    old = tmp_path / "claude/1.0"
+    old.mkdir(parents=True)
+    (old / "bin").write_bytes(b"x" * 8192)
+    payload = {"claude": [
+        {"version": "1.0", "install_path": str(old), "installed": True, "active": False},
+        {"version": "2.0", "install_path": str(tmp_path / "claude/2.0"), "installed": True, "active": True},
+    ]}
+    calls = []
+
+    def fake_run(cmd, timeout=60):
+        calls.append(cmd)
+        if cmd[1] == "prune":
+            import shutil
+            shutil.rmtree(old)
+        return subprocess.CompletedProcess(cmd, 0, json.dumps(payload), "")
+
+    monkeypatch.setattr(cleanup, "run", fake_run)
+    cat = cleanup.MiseVersions("mise", "Old tool versions", "")
+    result = cat.scan()
+    assert cat.paths == [old] and result.size >= 8192
+    assert "claude ×1" in result.detail
+    assert not cat.runs_in_terminal
+    assert cat.clean() >= 8192
+    assert calls[-1] == ["mise", "prune", "--tools", "--yes"]
