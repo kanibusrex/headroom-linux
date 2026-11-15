@@ -1,0 +1,26 @@
+pkgbase = headroom-linux
+	pkgdesc = Disk-space TUI for Arch/Omarchy: clear caches, find large files, and uninstall packages cleanly
+	pkgver = 0.2.1
+	pkgrel = 1
+	url = https://github.com/kanibusrex/headroom-linux
+	arch = any
+	license = MIT
+	checkdepends = python-pytest
+	checkdepends = python-pytest-asyncio
+	makedepends = python-build
+	makedepends = python-installer
+	makedepends = python-wheel
+	makedepends = python-setuptools
+	depends = python
+	depends = python-textual
+	depends = glib2
+	depends = xdg-utils
+	optdepends = pacman-contrib: package cache cleanup (paccache)
+	optdepends = mise: remove old tool versions
+	optdepends = docker: Docker cleanup
+	optdepends = xdg-terminal-exec: open from the app launcher outside Omarchy
+	conflicts = headroom
+	source = headroom-linux-0.2.1.tar.gz::https://github.com/kanibusrex/headroom-linux/archive/refs/tags/v0.2.1.tar.gz
+	sha256sums = 1b82c514ccf8aae9817f8056bb3b0d33df0f93ac7bd7725b280fe1beb2fa1323
+
+pkgname = headroom-linux

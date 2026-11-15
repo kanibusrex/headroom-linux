@@ -17,7 +17,7 @@ optdepends=(
 )
 conflicts=('headroom')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('1b82c514ccf8aae9817f8056bb3b0d33df0f93ac7bd7725b280fe1beb2fa1323')
 
 build() {
   cd "$pkgname-$pkgver"
