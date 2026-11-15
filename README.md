@@ -42,10 +42,14 @@ Lists your explicitly installed packages by size (repo or AUR), with a filter. U
 
 ## Install
 
-### From the AUR
+### As an Arch package
+
+An AUR package (`headroom-linux`) is coming soon. Until it's live, build the same package from this repo's PKGBUILD:
 
 ```sh
-yay -S headroom-linux    # or: paru -S headroom-linux
+git clone https://github.com/kanibusrex/headroom-linux
+cd headroom-linux/packaging/aur
+makepkg -si
 ```
 
 This installs `headroom` system-wide with its app-launcher entry and icon. Optional extras: `pacman-contrib` (package-cache cleanup), `mise`, `docker`.
