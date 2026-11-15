@@ -1,0 +1,39 @@
+# Maintainer: Michael Alexander <kanibusrex at users dot noreply dot github dot com>
+pkgname=headroom-linux
+pkgver=0.2.1
+pkgrel=1
+pkgdesc="Disk-space TUI for Arch/Omarchy: clear caches, find large files, and uninstall packages cleanly"
+arch=('any')
+url="https://github.com/kanibusrex/headroom-linux"
+license=('MIT')
+depends=('python' 'python-textual' 'glib2' 'xdg-utils')
+makedepends=('python-build' 'python-installer' 'python-wheel' 'python-setuptools')
+checkdepends=('python-pytest' 'python-pytest-asyncio')
+optdepends=(
+  'pacman-contrib: package cache cleanup (paccache)'
+  'mise: remove old tool versions'
+  'docker: Docker cleanup'
+  'xdg-terminal-exec: open from the app launcher outside Omarchy'
+)
+conflicts=('headroom')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$pkgname-$pkgver"
+  python -m build --wheel --no-isolation
+}
+
+check() {
+  cd "$pkgname-$pkgver"
+  PYTHONPATH="$PWD" pytest -q
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  python -m installer --destdir="$pkgdir" dist/*.whl
+  install -Dm755 packaging/headroom-launch "$pkgdir/usr/lib/headroom/headroom-launch"
+  install -Dm644 packaging/headroom.desktop "$pkgdir/usr/share/applications/headroom.desktop"
+  install -Dm644 assets/headroom.png "$pkgdir/usr/share/icons/hicolor/256x256/apps/headroom.png"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

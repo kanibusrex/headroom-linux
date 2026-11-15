@@ -1,0 +1,10 @@
+#!/bin/sh
+# App-launcher entry point: open Headroom in its own terminal window (class TUI.headroom).
+# On Omarchy, launching again focuses the window that's already open.
+if command -v omarchy-launch-or-focus-tui >/dev/null 2>&1; then
+  exec omarchy-launch-or-focus-tui --app-id=TUI.headroom headroom
+elif command -v xdg-terminal-exec >/dev/null 2>&1; then
+  exec xdg-terminal-exec --app-id=TUI.headroom -e headroom
+else
+  exec "${TERMINAL:-xterm}" -e headroom
+fi

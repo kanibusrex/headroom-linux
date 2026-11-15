@@ -42,6 +42,16 @@ Lists your explicitly installed packages by size (repo or AUR), with a filter. U
 
 ## Install
 
+### From the AUR
+
+```sh
+yay -S headroom-linux    # or: paru -S headroom-linux
+```
+
+This installs `headroom` system-wide with its app-launcher entry and icon. Optional extras: `pacman-contrib` (package-cache cleanup), `mise`, `docker`.
+
+### From source
+
 Needs Python 3.11+. `pacman-contrib` (for `paccache`) enables package-cache cleanup.
 
 ```sh
@@ -75,6 +85,10 @@ o.window("TUI.headroom", {
 | `t` / `o` / `m` | Trash file / open its folder / change minimum size |
 | `u` or `Enter` · `/` | Uninstall package · filter |
 | `r` · `q` | Rescan · quit |
+
+## License
+
+MIT — see [LICENSE](LICENSE).
 
 ## Development
 

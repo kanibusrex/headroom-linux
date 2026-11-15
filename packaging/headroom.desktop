@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Headroom
+GenericName=Disk Cleanup
+Comment=Clear caches, find large files, and uninstall packages cleanly
+Exec=/usr/lib/headroom/headroom-launch
+Terminal=false
+Icon=headroom
+Categories=System;
+Keywords=disk;space;clean;cache;storage;uninstall;
+StartupWMClass=TUI.headroom
